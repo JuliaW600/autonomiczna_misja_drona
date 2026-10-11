@@ -1,0 +1,1 @@
+"""Autonomiczna misja drona: poszukiwanie celu i zrzut ładunku (symulacja SITL)."""
