@@ -1,0 +1,19 @@
+{
+  "scenariusz": "poza_obszarem",
+  "wynik": "PRZERWANA",
+  "opis_wyniku": "misja przerwana (błąd drona lub alarm bezpieczeństwa)",
+  "alarm": "POZA_OBSZAREM",
+  "powod_przerwania": "alarm bezpieczeństwa: dron opuścił dozwoloną strefę",
+  "czas_misji_s": 73.3,
+  "historia_stanow": [
+    "przygotowanie",
+    "startowanie",
+    "szukanie",
+    "potwierdzanie",
+    "szukanie",
+    "powrót",
+    "koniec"
+  ],
+  "cel": null,
+  "pozycja_zrzutu": null
+}

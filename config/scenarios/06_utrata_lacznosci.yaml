@@ -1,0 +1,11 @@
+nazwa: utrata_lacznosci
+opis: Po 10 punktach trasy przestają napływać dane z drona. Misja próbuje wrócić do bazy. Tego nie da się wywołać w symulatorze, więc scenariusz działa tylko na atrapie.
+tylko_atrapa: true
+cele:
+  - {polnoc_m: 30, wschod_m: 45}
+awaria: {typ: lacznosc, po_punktach: 10}
+oczekiwane:
+  wynik: PRZERWANA
+  alarm: UTRATA_LACZNOSCI
+  reakcja: powrot
+  ostatnia_komenda: wroc_i_laduj

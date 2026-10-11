@@ -1,0 +1,9 @@
+nazwa: normalny
+opis: Cel leży na trasie, kamera raz zgłasza fałszywy alarm. Dron odrzuca go, znajduje prawdziwy cel, zrzuca ładunek i wraca.
+cele:
+  - {polnoc_m: 30, wschod_m: 45}
+oczekiwane:
+  wynik: SUKCES
+  alarm: null
+  reakcja: powrot
+  ostatnia_komenda: wroc_i_laduj

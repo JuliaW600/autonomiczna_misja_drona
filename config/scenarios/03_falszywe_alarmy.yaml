@@ -1,0 +1,9 @@
+nazwa: falszywe_alarmy
+opis: Celu nie ma, ale kamera często widzi "cel" tam, gdzie go nie ma. Dron sprawdza każdy alarm, odrzuca go i niczego nie zrzuca. Tylko na atrapie, bo w symulatorze dron zatrzymuje się kilka metrów od zamierzonego punktu, a przy tak częstych alarmach przypadkowa zgodność dwóch z trzech spojrzeń bywa możliwa (to ograniczenie potwierdzania, opisane w README).
+tylko_atrapa: true
+kamera: {p_falszywy_alarm: 0.3, seed: 7}
+oczekiwane:
+  wynik: NIE_ZNALEZIONO
+  alarm: null
+  reakcja: powrot
+  ostatnia_komenda: wroc_i_laduj

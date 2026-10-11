@@ -1,0 +1,8 @@
+nazwa: brak_celu
+opis: Na obszarze nie ma celu. Dron przeszukuje całą trasę, nic nie zrzuca i wraca.
+kamera: {p_falszywy_alarm: 0.0}
+oczekiwane:
+  wynik: NIE_ZNALEZIONO
+  alarm: null
+  reakcja: powrot
+  ostatnia_komenda: wroc_i_laduj

@@ -1,0 +1,10 @@
+nazwa: slaba_bateria
+opis: Po 10 punktach trasy napięcie baterii spada poniżej progu. Dron przerywa szukanie i wraca do bazy, bez zrzutu.
+cele:
+  - {polnoc_m: 30, wschod_m: 45}
+awaria: {typ: bateria, po_punktach: 10}
+oczekiwane:
+  wynik: PRZERWANA
+  alarm: SLABA_BATERIA
+  reakcja: powrot
+  ostatnia_komenda: wroc_i_laduj

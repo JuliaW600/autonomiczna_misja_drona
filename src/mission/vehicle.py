@@ -7,6 +7,7 @@ nie musi wiedzieć, czy rozmawia z prawdziwym symulatorem, czy z atrapą w testa
 import logging
 import time
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 from pymavlink import mavutil
 
@@ -17,6 +18,7 @@ log = logging.getLogger(__name__)
 POLECENIE_ARM = 400
 POLECENIE_TAKEOFF = 22
 POLECENIE_SERWO = 183
+POLECENIE_RESET_BATERII = 42651
 FLAGA_UZBROJONY = 128
 # Maska "interesuje mnie tylko pozycja": ignorujemy prędkość, przyspieszenie i kurs.
 MASKA_TYLKO_POZYCJA = 0b0000111111111000
@@ -26,8 +28,27 @@ KANAL_ZRZUTU = 9
 PWM_ZRZUTU = 1900
 
 
+# Awarie, które potrafimy wywołać w symulatorze ArduPilota (parametry SITL). Nie działają na prawdziwym dronie.
+AWARIE_SITL = {
+    "bateria": ("SIM_BATT_VOLTAGE", 10.0),
+    "gps": ("SIM_GPS1_ENABLE", 0.0),
+}
+USTAWIENIA_SITL_NORMALNE = {"SIM_BATT_VOLTAGE": 12.6, "SIM_GPS1_ENABLE": 1.0}
+NAPIECIE_NIEZNANE_MV = 65535
+
+
 class BladPojazdu(Exception):
     """Nie udało się wykonać operacji na dronie (np. przekroczono limit czasu)."""
+
+
+@dataclass(frozen=True)
+class Telemetria:
+    """Stan zdrowia drona. `None` oznacza "nie wiem" (np. jeszcze nie przyszła wiadomość)."""
+
+    bateria_proc: int | None = None
+    napiecie_v: float | None = None
+    fix_gps: int | None = None
+    wiek_heartbeat_s: float = 0.0
 
 
 class Pojazd(ABC):
@@ -49,8 +70,16 @@ class Pojazd(ABC):
         """Leci do punktu i czeka, aż dron będzie w odległości `tolerancja_m`."""
 
     @abstractmethod
+    def telemetria(self) -> Telemetria:
+        """Bateria, GPS i świeżość łączności; używa tego monitor bezpieczeństwa."""
+
+    @abstractmethod
     def zrzut(self, limit_s: float = 10) -> None:
         """Zwalnia ładunek i czeka na potwierdzenie, że mechanizm się poruszył."""
+
+    @abstractmethod
+    def laduj_awaryjnie(self, limit_s: float = 180) -> None:
+        """Ląduje w miejscu (tryb LAND), bez wracania do bazy. Gdy GPS nie działa, RTL nie jest możliwy."""
 
     @abstractmethod
     def wroc_i_laduj(self, limit_s: float = 180) -> None:
@@ -130,12 +159,56 @@ class MavlinkPojazd(Pojazd):
                 return
         raise BladPojazdu(f"Nie dotarto do punktu {cel} w ciągu {limit_s} s")
 
+    def telemetria(self) -> Telemetria:
+        while self._conn.recv_match(blocking=False) is not None:
+            pass
+        status = self._conn.messages.get("SYS_STATUS")
+        gps = self._conn.messages.get("GPS_RAW_INT")
+        bateria = None
+        napiecie = None
+        if status is not None:
+            if status.battery_remaining >= 0:
+                bateria = status.battery_remaining
+            if status.voltage_battery != NAPIECIE_NIEZNANE_MV:
+                napiecie = status.voltage_battery / 1000.0
+        return Telemetria(
+            bateria_proc=bateria,
+            napiecie_v=napiecie,
+            fix_gps=None if gps is None else gps.fix_type,
+            wiek_heartbeat_s=self._conn.time_since("HEARTBEAT"),
+        )
+
+    def wstrzyknij_awarie(self, typ: str) -> None:
+        """Tylko symulator: psuje baterię lub GPS, żeby sprawdzić reakcję misji."""
+        if typ not in AWARIE_SITL:
+            raise ValueError(f"W symulatorze da się wywołać tylko: {', '.join(AWARIE_SITL)} (podano '{typ}')")
+        nazwa, wartosc = AWARIE_SITL[typ]
+        log.warning("Wstrzykuję awarię '%s' (%s = %s)", typ, nazwa, wartosc)
+        self._ustaw_parametr(nazwa, wartosc)
+
+    def przywroc_awarie(self, limit_s: float = 10) -> None:
+        """Tylko symulator: wraca do zdrowego GPS i baterii z napięciem 12,6 V i 100%.
+
+        Ustawienia zostają w symulatorze między lotami, a każdy lot zużywa baterię (ok. 30% na misję),
+        więc bez tego trzecia misja z rzędu zgłosiłaby alarm słabej baterii.
+        """
+        for nazwa, wartosc in USTAWIENIA_SITL_NORMALNE.items():
+            self._ustaw_parametr(nazwa, wartosc)
+        self._conn.mav.command_long_send(*self._cel, POLECENIE_RESET_BATERII, 0, 255, 100, 0, 0, 0, 0, 0)
+        start = time.time()
+        while time.time() - start < limit_s:
+            bateria = self.telemetria().bateria_proc
+            if bateria is not None and bateria >= 99:
+                return
+            time.sleep(0.5)
+        raise BladPojazdu("Symulator nie przywrócił baterii do 100%")
+
     def _ustaw_parametr(self, nazwa: str, wartosc: float, limit_s: float = 5) -> None:
         self._conn.mav.param_set_send(*self._cel, nazwa.encode(), wartosc, mavutil.mavlink.MAV_PARAM_TYPE_REAL32)
         start = time.time()
         while time.time() - start < limit_s:
             msg = self._conn.recv_match(type="PARAM_VALUE", blocking=True, timeout=1)
-            if msg is not None and msg.param_id == nazwa and msg.param_value == wartosc:
+            if msg is not None and msg.param_id == nazwa and abs(msg.param_value - wartosc) < 1e-3:
                 return
         raise BladPojazdu(f"Autopilot nie potwierdził ustawienia {nazwa} = {wartosc}")
 
@@ -151,12 +224,20 @@ class MavlinkPojazd(Pojazd):
                 return
         raise BladPojazdu(f"Brak potwierdzenia zrzutu (serwo {KANAL_ZRZUTU}) w ciągu {limit_s} s")
 
-    def wroc_i_laduj(self, limit_s: float = 180) -> None:
-        self._conn.set_mode("RTL")
-        log.info("Powrót do bazy (RTL)")
+    def _czekaj_na_rozbrojenie(self, limit_s: float) -> None:
         start = time.time()
         while time.time() - start < limit_s:
             if self._czy_uzbrojony(timeout=2) is False:
                 log.info("Wylądowano i rozbrojono")
                 return
         raise BladPojazdu(f"Nie wylądowano w ciągu {limit_s} s")
+
+    def wroc_i_laduj(self, limit_s: float = 180) -> None:
+        self._conn.set_mode("RTL")
+        log.info("Powrót do bazy (RTL)")
+        self._czekaj_na_rozbrojenie(limit_s)
+
+    def laduj_awaryjnie(self, limit_s: float = 180) -> None:
+        self._conn.set_mode("LAND")
+        log.info("Lądowanie awaryjne w miejscu (LAND)")
+        self._czekaj_na_rozbrojenie(limit_s)

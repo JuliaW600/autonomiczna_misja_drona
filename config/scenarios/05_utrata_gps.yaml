@@ -1,0 +1,10 @@
+nazwa: utrata_gps
+opis: Po 10 punktach trasy znika sygnał GPS. Powrót do bazy bez GPS jest niemożliwy, więc dron ląduje w miejscu.
+cele:
+  - {polnoc_m: 30, wschod_m: 45}
+awaria: {typ: gps, po_punktach: 10}
+oczekiwane:
+  wynik: PRZERWANA
+  alarm: UTRATA_GPS
+  reakcja: ladowanie_awaryjne
+  ostatnia_komenda: laduj_awaryjnie

@@ -1,0 +1,12 @@
+nazwa: poza_obszarem
+opis: Dozwolona strefa jest węższa niż trasa (wschód tylko do 40 m od startu). Gdy dron ją opuszcza, przerywa szukanie i wraca do bazy.
+strefa:
+  polnoc_m: [-30, 80]
+  wschod_m: [-30, 40]
+cele:
+  - {polnoc_m: 30, wschod_m: 45}
+oczekiwane:
+  wynik: PRZERWANA
+  alarm: POZA_OBSZAREM
+  reakcja: powrot
+  ostatnia_komenda: wroc_i_laduj

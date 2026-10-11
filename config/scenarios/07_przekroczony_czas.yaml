@@ -1,0 +1,11 @@
+nazwa: przekroczony_czas
+opis: Limit czasu misji to 40 s, a lot trwa dłużej, zanim dron znajdzie cel. Dron przerywa i wraca do bazy. Na atrapie każda komenda trwa 2 s zegara sztucznego.
+czas_misji_s: 40
+czas_komendy_s: 2
+cele:
+  - {polnoc_m: 30, wschod_m: 45}
+oczekiwane:
+  wynik: PRZERWANA
+  alarm: PRZEKROCZONY_CZAS
+  reakcja: powrot
+  ostatnia_komenda: wroc_i_laduj

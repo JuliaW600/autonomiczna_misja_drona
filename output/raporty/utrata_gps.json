@@ -1,0 +1,17 @@
+{
+  "scenariusz": "utrata_gps",
+  "wynik": "PRZERWANA",
+  "opis_wyniku": "misja przerwana (błąd drona lub alarm bezpieczeństwa)",
+  "alarm": "UTRATA_GPS",
+  "powod_przerwania": "alarm bezpieczeństwa: utrata sygnału GPS",
+  "czas_misji_s": 37.4,
+  "historia_stanow": [
+    "przygotowanie",
+    "startowanie",
+    "szukanie",
+    "lądowanie awaryjne",
+    "koniec"
+  ],
+  "cel": null,
+  "pozycja_zrzutu": null
+}
