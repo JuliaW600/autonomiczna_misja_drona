@@ -1,0 +1,7 @@
+# Cele do znalezienia. Pozycje w metrach od miejsca startu drona.
+# Obszar przeszukiwania (scripts/misja.py) leży 10..70 m na wschód i 10..50 m na północ od startu.
+cele:
+  - nazwa: czerwony_kwadrat
+    polnoc_m: 30
+    wschod_m: 45
+    

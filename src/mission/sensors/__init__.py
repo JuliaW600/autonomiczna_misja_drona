@@ -1,0 +1,1 @@
+"""Czujniki drona: tu wirtualna kamera, która zastępuje prawdziwą."""

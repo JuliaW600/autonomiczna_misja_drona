@@ -35,3 +35,12 @@ def odleglosc_m(a: Punkt, b: Punkt) -> float:
     """Odległość w poziomie między dwoma punktami, w metrach."""
     polnoc_m, wschod_m = wspolrzedne_lokalne(a, b)
     return math.hypot(polnoc_m, wschod_m)
+
+def srednia_pozycja(punkty: list[Punkt]) -> Punkt:
+    """Środek (średnia) kilku punktów leżących blisko siebie."""
+    if not punkty:
+        raise ValueError("potrzebny co najmniej jeden punkt")
+    return Punkt(
+        sum(p.lat for p in punkty) / len(punkty),
+        sum(p.lon for p in punkty) / len(punkty),
+    )

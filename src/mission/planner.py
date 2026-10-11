@@ -82,3 +82,21 @@ def zapisz_waypoints(punkty: list[Punkt], dom: Punkt, wysokosc_m: float, sciezka
         linie.append("\t".join(f"{x:.8f}" if isinstance(x, float) else str(x) for x in w))
     sciezka.parent.mkdir(parents=True, exist_ok=True)
     sciezka.write_text("\n".join(linie) + "\n", encoding="utf-8")
+
+def zageszcz(punkty: list[Punkt], krok_m: float) -> list[Punkt]:
+    """Dodaje punkty pośrednie, tak by sąsiednie punkty były oddalone najwyżej o `krok_m`.
+
+    Po co: kamera ma "rozejrzeć się" nie tylko na końcach pasów, ale też w trakcie przelotu.
+    Pierwszy punkt zostaje bez zmian, każdy kolejny oryginalny punkt też trafia do wyniku.
+    """
+    if krok_m <= 0:
+        raise ValueError("krok_m musi być dodatni")
+    if not punkty:
+        return []
+    wynik = [punkty[0]]
+    for a, b in zip(punkty, punkty[1:]):
+        liczba_odcinkow = max(1, math.ceil(odleglosc_m(a, b) / krok_m - 1e-9))
+        for k in range(1, liczba_odcinkow + 1):
+            u = k / liczba_odcinkow
+            wynik.append(Punkt(a.lat + (b.lat - a.lat) * u, a.lon + (b.lon - a.lon) * u))
+    return wynik

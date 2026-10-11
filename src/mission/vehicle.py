@@ -16,9 +16,14 @@ log = logging.getLogger(__name__)
 
 POLECENIE_ARM = 400
 POLECENIE_TAKEOFF = 22
+POLECENIE_SERWO = 183
 FLAGA_UZBROJONY = 128
 # Maska "interesuje mnie tylko pozycja": ignorujemy prędkość, przyspieszenie i kurs.
 MASKA_TYLKO_POZYCJA = 0b0000111111111000
+
+# Zrzut ładunku: serwo na wyjściu nr 9, położenie "otwarte" = 1900 µs.
+KANAL_ZRZUTU = 9
+PWM_ZRZUTU = 1900
 
 
 class BladPojazdu(Exception):
@@ -42,6 +47,10 @@ class Pojazd(ABC):
     @abstractmethod
     def lec_do(self, cel: Punkt, wysokosc_m: float, tolerancja_m: float = 3.0, limit_s: float = 120) -> None:
         """Leci do punktu i czeka, aż dron będzie w odległości `tolerancja_m`."""
+
+    @abstractmethod
+    def zrzut(self, limit_s: float = 10) -> None:
+        """Zwalnia ładunek i czeka na potwierdzenie, że mechanizm się poruszył."""
 
     @abstractmethod
     def wroc_i_laduj(self, limit_s: float = 180) -> None:
@@ -120,6 +129,27 @@ class MavlinkPojazd(Pojazd):
             if odleglosc_m(punkt, cel) <= tolerancja_m:
                 return
         raise BladPojazdu(f"Nie dotarto do punktu {cel} w ciągu {limit_s} s")
+
+    def _ustaw_parametr(self, nazwa: str, wartosc: float, limit_s: float = 5) -> None:
+        self._conn.mav.param_set_send(*self._cel, nazwa.encode(), wartosc, mavutil.mavlink.MAV_PARAM_TYPE_REAL32)
+        start = time.time()
+        while time.time() - start < limit_s:
+            msg = self._conn.recv_match(type="PARAM_VALUE", blocking=True, timeout=1)
+            if msg is not None and msg.param_id == nazwa and msg.param_value == wartosc:
+                return
+        raise BladPojazdu(f"Autopilot nie potwierdził ustawienia {nazwa} = {wartosc}")
+
+    def zrzut(self, limit_s: float = 10) -> None:
+        # Funkcja 0 = "zwykłe serwo sterowane ręcznie komendą", inaczej autopilot nadpisze nasz sygnał.
+        self._ustaw_parametr(f"SERVO{KANAL_ZRZUTU}_FUNCTION", 0)
+        self._conn.mav.command_long_send(*self._cel, POLECENIE_SERWO, 0, KANAL_ZRZUTU, PWM_ZRZUTU, 0, 0, 0, 0, 0)
+        start = time.time()
+        while time.time() - start < limit_s:
+            msg = self._conn.recv_match(type="SERVO_OUTPUT_RAW", blocking=True, timeout=1)
+            if msg is not None and getattr(msg, f"servo{KANAL_ZRZUTU}_raw", 0) == PWM_ZRZUTU:
+                log.info("Zrzut: serwo %d ustawione na %d µs (potwierdzone)", KANAL_ZRZUTU, PWM_ZRZUTU)
+                return
+        raise BladPojazdu(f"Brak potwierdzenia zrzutu (serwo {KANAL_ZRZUTU}) w ciągu {limit_s} s")
 
     def wroc_i_laduj(self, limit_s: float = 180) -> None:
         self._conn.set_mode("RTL")
