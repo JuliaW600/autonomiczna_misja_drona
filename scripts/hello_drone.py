@@ -1,6 +1,6 @@
-"""Pierwszy test: połącz się z symulatorem, wystartuj, powiś i lądowanie.
+"""Pierwszy test: połącz się z symulatorem, wystartuj, zawiśnij i wyląduj.
 
-Użycie:  python hello_drone.py --connect tcp:127.0.0.1:5762
+Użycie:  python scripts/hello_drone.py --connect tcp:127.0.0.1:5762
 """
 import argparse
 import time

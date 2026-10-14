@@ -4,7 +4,7 @@
   "opis_wyniku": "cel znaleziony i ładunek zrzucony",
   "alarm": null,
   "powod_przerwania": null,
-  "czas_misji_s": 104.0,
+  "czas_misji_s": 85.0,
   "historia_stanow": [
     "przygotowanie",
     "startowanie",
@@ -17,11 +17,11 @@
     "koniec"
   ],
   "cel": {
-    "lat": -35.3630837,
-    "lon": 149.1657484
+    "lat": -35.3626359,
+    "lon": 149.1659859
   },
   "pozycja_zrzutu": {
-    "lat": -35.3630795,
-    "lon": 149.1657461
+    "lat": -35.3626321,
+    "lon": 149.1659839
   }
 }
