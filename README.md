@@ -9,7 +9,7 @@ Autor: Julia Wierzbicka
 [Awarie w Mission Plannerze (film)](https://drive.google.com/file/d/1cnelmbGfTy-NOu4XVmemNjnMwPisvn23/view?usp=sharing).
 
 
-[Misja ze zrzutem ładunku w Mission Plannerze](docs/misja-zrzut-mission-planner.png) 
+[Misja ze zrzutem ładunku w Mission Plannerze i jednym fałszywym alarmem](docs/misja-zrzut-mission-planner.png) 
 
 [Pełna misja w symulatorze] https://drive.google.com/file/d/1bxbqcKp4sBbboGS7KH68qY9peaoHYRbK/view?usp=sharing 
 
