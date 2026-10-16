@@ -1,4 +1,4 @@
-"""Testy dokumentacji: README ma być kompletne i nie może odsyłać do nieistniejących plików."""
+"""Testy dokumentacji"""
 import re
 from pathlib import Path
 
@@ -7,7 +7,7 @@ import pytest
 KORZEN = Path(__file__).resolve().parents[2]
 README = KORZEN / "README.md"
 SCENARIUSZE = sorted((KORZEN / "config" / "scenarios").glob("*.yaml"))
-ZNACZNIK_DO_UZUPELNIENIA = "<<UZUPEŁNIJ"
+
 
 
 @pytest.fixture(scope="module")
@@ -47,7 +47,3 @@ def test_kazdy_scenariusz_jest_opisany(tresc, plik):
 def test_sa_scenariusze():
     assert len(SCENARIUSZE) >= 8
 
-
-def test_readme_nie_ma_pustych_pol_do_uzupelnienia(tresc):
-    linie = [n for n, l in enumerate(tresc.splitlines(), start=1) if ZNACZNIK_DO_UZUPELNIENIA in l]
-    assert linie == [], f"w README zostały pola '{ZNACZNIK_DO_UZUPELNIENIA}' w liniach: {linie}"

@@ -22,11 +22,11 @@ https://drive.google.com/file/d/1bxbqcKp4sBbboGS7KH68qY9peaoHYRbK/view?usp=shari
 
 2. [Przebieg prawidłowego scenariusza](#2-przebieg-prawidłowego-scenariusza) 
 
-3. [Architektura i najważniejsze komponenty](#3-architektura-i-najważniejsze-elementy) 
+3. [Architektura](#3-architektura) 
 
 4. [Struktura repozytorium i dane testowe](#4-struktura-repozytorium-i-dane-testowe) 
 
-5. [Instrukcja uruchomienia programu](#5-instrukcja-uruchomienia-programu) 
+5. [Instrukcja uruchomienia](#5-instrukcja-uruchomienia) 
 
 6. [Uruchomienie symulacji w Mission Plannerze (SITL)](#6-uruchomienie-symulacji-w-mission-plannerze-sitl) 
 
@@ -34,76 +34,78 @@ https://drive.google.com/file/d/1bxbqcKp4sBbboGS7KH68qY9peaoHYRbK/view?usp=shari
 
 8. [Scenariusze testowe i oczekiwane wyniki](#8-scenariusze-testowe-i-oczekiwane-wyniki) 
 
-9. [Przyjęte uproszczenia i to, czego nie udało się zasymulować](#9-przyjęte-uproszczenia-i-to-czego-nie-udało-się-zasymulować) 
+9. [Przyjęte uproszczenia](#9-przyjęte-uproszczenia) 
 
 10. [Pomysły na dalszy rozwój](#10-pomysły-na-dalszy-rozwój) 
 
-11. [Wykorzystane źródła i narzędzia](#11-wykorzystane-źródła-narzędzia-i-ai) 
+11. [Wykorzystane źródła i narzędzia](#11-wykorzystane-źródła-i_narzędzia) 
 
  
 
 ## 1. Koncepcja misji 
 
-**Misja "poszukiwanie celu i zrzut"** Dron ma znaleźć w zadanym obszarze czerwony kwadrat (cel) i zrzucić na niego ładunek - najpierw przeszukanie terenu, potem zrzut. 
+
+**Misja "poszukiwanie celu i zrzut"** Dron ma za zadnianie, żeby znaleźć w zadanym obszarze czerwony kwadrat (cel) i zrzucić na niego ładunek - najpierw przeszukuje teren, wychwytuje cel, sprawdza poprawnoość i dokonuje zrzutu. 
+
+przygotowanie → start → szukanie → potwierdzanie (nie) → szukanie → potwierdzanie → zrzut → powrót → koniec
 
 
- 1. Start, stan `startowanie` uzbrojenie, TAKEOFF, czekanie na wysokość 20 m  
+Działanie:
+ 1. Przygotowanie - program łączy się z autopilotem, tryb GUIDED
 
- 2. Przelot nad obszarem lub trasą, stan `szukanie`, trasa nad obszarem 60 m x 40 m, zagęszczona co 5 m  
+ 2. Start - uzbrojenie (ARM), TAKEOFF, wzniesienie na wysokość 20 m  
 
- 3. Zadanie z czujnikiem - wirtualna kamera z polem widzenia 60 stopni, szumem pozycji, chybieniami i fałszywymi alarmami  
+ 3. Szukanie celu - przelot nad obszarem lub trasą, czyli obszarem 60 m x 40 m, zagęszczoną co 5 m (kamera sprawdza czy widzi cel), wirtualna kamera z polem widzenia 60 stopni, szumem pozycji, chybieniami i fałszywymi alarmami  
 
- 4. Reakcja na wynik czujnika - stan `potwierdzanie` (odrzuca fałszywe alarmy), potem `zrzut` nad celem albo dalsze poszukiwanie  
+ 4. Potwierdzemie celu - dron podlatuje w potencjalne miejsce i sprawdza 3 razy. Jeśli 2/3 bedą się zgadzały cel zostaje potwierdzony - odrzuca fałszywe alarmy, potem zrzut nad celem albo dalsze poszukiwanie, gdy cel nie potwierdzony (wraca spowrotem na trasę)  
 
- 5. Powrót i lądowanie - stan `powrot`- tryb RTL, czekanie na rozbrojenie po lądowaniu  
+ 5. Powrót i lądowanie - tryb RTL, czekanie na rozbrojenie po lądowaniu (DISARM) 
 
  
 
 Poza prawidłowym przebiegiem misji obsługiwane są też sytuacje takie jak brak celu, fałszywą detekcje, słaba bateria, utrata GPS i łączności, 
-
-przekroczenie limitu czasu, wyjście poza strefę, a także błędy samego drona. 
+przekroczenie limitu czasu, wyjście poza strefę, a także błędy samego drona. Sprawdza je przed każdym punktem trasy monitor bezpieczeństwa. Kiedy nastąpi alarm, czyli coś jest nie tak - dron wraca do bazy bez zrzutu. Kiedy utracił GPS ląduje w obecnym miejscu.
 
  
 
 **Kamera jest zasymulowana**, bo symulator ArduPilota nie ma obrazu. Czujnik jest ukryty za interfejsem `Czujnik`, więc prawdziwą kamerę z algorytmem 
-
 detekcji można podłączyć bez zmian w logice misji. 
 
  
 
 ## 2. Przebieg prawidłowego scenariusza 
 
-1. **Przygotowanie.** Program łączy się z autopilotem, zapamiętuje pozycję startową, przełącza tryb na GUIDED i uzbraja silniki. 
+1. **Przygotowanie** Program łączy się z autopilotem, zapamiętuje pozycję startową, przełącza tryb na GUIDED i uzbraja silniki. 
 
-2. **Start.** Dron wznosi się na 20 m. 
+2. **Start** Dron wznosi się na 20 m. 
 
-3. **Szukanie.** Dron leci po kolejnych punktach trasy. W każdym punkcie kamera sprawdza, czy widzi cel -przed każdym punktem monitor bezpieczeństwa sprawdza 
+3. **Szukanie** Dron leci po kolejnych punktach trasy. W każdym punkcie kamera sprawdza, czy widzi cel -przed każdym punktem monitor bezpieczeństwa sprawdza 
 
    baterię, GPS, łączność, strefe, czas. 
 
-4. **Potwierdzanie.** Gdy kamera coś zauważy, dron podlatuje do potencjalnego miejsca zrzutu i patrzy na niego 3 razy. Cel jest uznany, jeśli co najmniej 2 z 3 się zgadzają. 
+4. **Potwierdzanie** Gdy kamera coś zauważy, dron podlatuje do potencjalnego miejsca zrzutu i patrzy na niego 3 razy. Cel jest uznany, jeśli co najmniej 2 z 3 się zgadzają. 
 
    Inaczej to fałszywy alarm i dron wraca na trasę do szukania. 
 
-5. **Zrzut.** Dron dolatuje nad uśrednioną pozycję celu (tolerancja 2 m) i zrzuca ładunek: serwo na wyjściu 9 ustawia 1900 µs. Program czeka na potwierdzenie 
+5. **Zrzut** Dron dolatuje nad uśrednioną pozycję celu (tolerancja 2 m) i zrzuca ładunek - serwo na wyjściu 9 ustawia 1900 µs. Program czeka na potwierdzenie 
 
-   z telemetrii (`SERVO_OUTPUT_RAW`), a nie tylko wysyła komendę. 
+   z telemetrii (SERVO_OUTPUT_RAW). 
 
-6. **Powrót i lądowanie.** Tryb RTL, dron wraca do bazy, ląduje i silniki zostają rozbrojone. 
+6. **Powrót i lądowanie** Tryb RTL, dron wraca do bazy, ląduje i silniki zostają rozbrojone. 
 
-7. **Raport.** Program zapisuje `output/raport.json` (wynik, historia stanów, czas, pozycja celu i zrzutu). 
+7. **Raport** Program zapisuje `output/raport.json` (wynik, historia stanów, czas, pozycja celu i zrzutu). 
 
  
 
-Stany prawidłowej misji (z jednym fałszywym alarmem): 
+Schemat prawidłowej misji (z jednym fałszywym alarmem): 
 
-`przygotowanie -> startowanie -> szukanie -> potwierdzanie (nie) -> szukanie -> potwierdzanie -> zrzut -> powrót -> koniec`. 
+przygotowanie → start → szukanie → potwierdzanie (nie) → szukanie → potwierdzanie → zrzut → powrót → koniec
 
  
 W symulatorze zrzut ląduje ok. 0,5 do 2 m od prawdziwego celu (zależy od szumu kamery). 
 
 
-## 3. Architektura i najważniejsze komponenty 
+## 3. Architektura
 
 ```mermaid 
 
@@ -165,29 +167,27 @@ flowchart TB
 
  
 
-Linia ciągła oznacza "używa", linia przerywana "jest implementacją interfejsu". Kluczowe decyzje projektowe: 
+Linia ciągła znaczy "używa", linia przerywana "jest implementacją interfejsu". Kluczowe decyzje projektowe: 
 
-- **Interfejsy i atrapy.** Logika misji nie wie, czy rozmawia z symulatorem, czy z atrapą. Dzięki temu ten sam kod przechodzi testy bez symulatora, a w Mission Plannerze 
+- **Interfejsy i atrapy** - logika misji nie wie, czy rozmawia z symulatorem, czy z atrapą. Dzięki temu ten sam kod przechodzi testy bez symulatora, a w Mission Plannerze 
 
   leci naprawdę. Tylko `vehicle.py` zna MAVLink. 
 
-- **Maszyna stanów.** Każdy stan to jedna metoda, która coś robi i zwraca stan następny. Historia stanów trafia do raportu, więc w teście widać, którędy poszła misja. 
+- **Maszyna stanów** - każdy stan to jedna metoda, która coś robi i zwraca stan następny. Historia stanów trafia do raportu, więc w teście widać, jak przebiegła misja. 
 
-- **Monitor bezpieczeństwa jako czysta funkcja.** `sprawdz(telemetria, pozycja, dom, czas, limity)` zwraca alarm albo nic. Kolejność ważności: łączność, GPS, bateria, strefa, czas. 
+- **Monitor bezpieczeństwa jako funkcja** - `sprawdz(telemetria, pozycja, dom, czas, limity)` zwraca alarm albo nic. Kolejność ważności: łączność, GPS, bateria, strefa, czas. 
 
   Utrata GPS kończy się lądowaniem w miejscu (bez GPS powrót jest niemożliwy), pozostałe alarmy powrotem do bazy. 
 
-- **Zegar jako zależność.** Misja pyta obiekt `Zegar` o czas. W testach `ZegarSztuczny` płynie tylko wtedy, gdy atrapa zgłosi czas komendy, więc test 10-minutowej misji trwa milisekundy. 
+- **Zegar jako zależność** - misja pyta obiekt `Zegar` o czas. W testach `ZegarSztuczny` płynie tylko wtedy, gdy atrapa zgłosi czas komendy, więc test 10-minutowej misji trwa milisekundy. 
 
-- **Scenariusze to dane.** Plik YAML opisuje, co jest w obszarze, co i kiedy się psuje oraz czego oczekujemy. Nowy scenariusz to nowy plik, bez pisania kodu. 
+- **Scenariusze to dane** - plik YAML opisuje, co jest w obszarze, co i kiedy się psuje oraz czego oczekujemy. Nowy scenariusz to nowy plik, bez pisania kodu. 
 
-- **Powtarzalność.** Kamera ma ziarno losowości (`seed`), te same dane dają ten sam przebieg. 
+- **Powtarzalność** - kamera ma ziarno losowości (`seed`), te same dane dają ten sam przebieg. 
 
  
 
- Plik  Odpowiedzialność  
-
- ---  ---  
+ Plik i za co odpowiada
 
  `src/mission/vehicle.py`  interfejs `Pojazd`, implementacja `MavlinkPojazd` (jedyne miejsce z MAVLinkiem), wstrzykiwanie awarii w symulatorze  
 
@@ -205,7 +205,7 @@ Linia ciągła oznacza "używa", linia przerywana "jest implementacją interfejs
 
  `src/mission/zegar.py`  zegar systemowy i sztuczny  
 
- `src/mission/raport.py`  raport JSON i podsumowanie tekstowe  
+ `src/mission/raport.py`  raport JSON i podsumowanie 
 
  `src/mission/scenariusz.py`  wczytywanie i uruchamianie scenariuszy, sprawdzanie oczekiwań  
 
@@ -220,8 +220,6 @@ telemetria z `GLOBAL_POSITION_INT`, `SYS_STATUS`, `GPS_RAW_INT` i `HEARTBEAT`. K
  
 
 ## 4. Struktura repozytorium i dane testowe 
-
-``` 
 
 autonomiczna_misja_drona/ 
 
@@ -261,7 +259,7 @@ w `output/` powstają przy każdym uruchomieniu i nie są w repozytorium.
 
  
 
-## 5. Instrukcja uruchomienia programu 
+## 5. Instrukcja uruchomienia
 
 **Wymagania:** Python musi byc w wersji conajmniej 3.12 , Git. Do lotów w symulatorze także Mission Planner. 
 
@@ -416,8 +414,6 @@ Testy nie wymagają symulatora ani internetu i trwają bardzo krótko. Aktywny m
 
  Pliki testów i co sprawdzają  
 
- ---  ---  
-
  `test_geo.py`, `test_planner.py`, `test_geo_planner_dodatki.py`  przeliczanie współrzędnych, trasa, zagęszczanie, eksport `.waypoints`  
 
  `test_kamera.py`  pole widzenia, szum, chybienia i fałszywe alarmy kamery, powtarzalność przy tym samym seed  
@@ -446,32 +442,32 @@ python scripts/scenariusz.py --wszystkie --atrapa
 ``` 
 
  
-Oczekiwane to 8 razy `ZALICZONY`. Testy są **powtarzalne**
+Oczekiwane to 8 razy `ZALICZONY`. Testy są powtarzalne.
 
  
 
 ## 8. Scenariusze testowe i oczekiwane wyniki 
 
-Każdy scenariusz to plik YAML w `config/scenarios/` z opisem, awarią i **oczekiwanym wynikiem**. Program porównuje faktyczny przebieg z oczekiwanym i wypisuje `ZALICZONY` albo `NIEZALICZONY`. 
+Każdy scenariusz to plik YAML w `config/scenarios/` z opisem, awarią i oczekiwanym wynikiem. Program porównuje faktyczny przebieg z oczekiwanym i wypisuje `ZALICZONY` albo `NIEZALICZONY`. 
  
 
  Scenariusz - Co się dzieje - Oczekiwany wynik - Gdzie  
 
- `normalny`  cel na trasie, jeden fałszywy alarm po drodze  fałszywy alarm odrzucony, cel potwierdzony, zrzut, powrót, wynik `SUKCES`  atrapa i symulator  
+ `normalny` - cel na trasie, jeden fałszywy alarm po drodze  fałszywy alarm odrzucony, cel potwierdzony, zrzut, powrót, wynik `SUKCES`  atrapa i symulator  
 
- `brak_celu`  w obszarze nie ma celu  cała trasa przeszukana, bez zrzutu, powrót, `NIE_ZNALEZIONO`  atrapa i symulator  
+ `brak_celu` - w obszarze nie ma celu  cała trasa przeszukana, bez zrzutu, powrót, `NIE_ZNALEZIONO`  atrapa i symulator  
 
- `falszywe_alarmy`  kamera często zgłasza nieistniejący cel,  każdy alarm sprawdzony i odrzucony, bez zrzutu, `NIE_ZNALEZIONO`  tylko atrapa  
+ `falszywe_alarmy`- kamera często zgłasza nieistniejący cel,  każdy alarm sprawdzony i odrzucony, bez zrzutu, `NIE_ZNALEZIONO`  tylko atrapa  
 
- `slaba_bateria`  po 10 punktach trasy napięcie 10 V  alarm `SLABA_BATERIA`, powrót do bazy bez zrzutu, `PRZERWANA`  atrapa i symulator  
+ `slaba_bateria`-  po 10 punktach trasy napięcie 10 V  alarm `SLABA_BATERIA`, powrót do bazy bez zrzutu, `PRZERWANA`  atrapa i symulator  
 
- `utrata_gps`  po 10 punktach znika GPS  alarm `UTRATA_GPS`, lądowanie w miejscu, `PRZERWANA`  atrapa i symulator  
+ `utrata_gps` - po 10 punktach znika GPS  alarm `UTRATA_GPS`, lądowanie w miejscu, `PRZERWANA`  atrapa i symulator  
 
- `utrata_lacznosci`  po 10 punktach brak sygnału z drona  alarm `UTRATA_LACZNOSCI`, próba powrotu, `PRZERWANA`  tylko atrapa  
+ `utrata_lacznosci` - po 10 punktach brak sygnału z drona  alarm `UTRATA_LACZNOSCI`, próba powrotu, `PRZERWANA`  tylko atrapa  
 
- `przekroczony_czas`  limit czasu misji 40 s  alarm `PRZEKROCZONY_CZAS`, powrót, `PRZERWANA`  atrapa i symulator  
+ `przekroczony_czas` - limit czasu misji 40 s  alarm `PRZEKROCZONY_CZAS`, powrót, `PRZERWANA`  atrapa i symulator  
 
- `poza_obszarem`  dozwolona strefa węższa niż trasa  alarm `POZA_OBSZAREM`, powrót, `PRZERWANA`  atrapa i symulator  
+ `poza_obszarem` - dozwolona strefa węższa niż trasa  alarm `POZA_OBSZAREM`, powrót, `PRZERWANA`  atrapa i symulator  
 
  
 
@@ -479,36 +475,39 @@ Do tego testy jednostkowe sprawdzają awarie samego drona - nieudane uzbrojenie,
 
  
 
-**Co sprawdzono w symulatorze:**W Mission Plannerze przetestowano 4 sytuacje awaryjne -  slaba_bateria, utrata_gps, poza_obszarem, przekroczony_czas. Każda z nich została zaliczona. 
+**Co sprawdzono w symulatorze**
+W Mission Plannerze przetestowano 4 sytuacje awaryjne -  slaba_bateria, utrata_gps, poza_obszarem, przekroczony_czas. 
+Każda z nich została zaliczona. 
 
 
-**Symulator i atrapa** W SITL da się wiarygodnie przetestować: start, lot po trasie, zrzut (serwo), tryby RTL i LAND, słabą baterię i utratę GPS (przez parametry symulatora). 
+**Symulator i atrapa** 
+W SITL da się wiarygodnie przetestować: start, lot po trasie, zrzut (serwo), tryby RTL i LAND, słabą baterię i utratę GPS (przez parametry symulatora). 
 
 Na atrapie testujemy to, czego SITL nie potrafi lub nie jest powtarzalnie - utratę łączności, fałszywe alarmy kamery (losowe, w SITL wynik byłby przypadkowy) i błędy pojedynczych komend. 
 
  
 
-## 9. Przyjęte uproszczenia i to co nie udało się zasymulować 
+## 9. Przyjęte uproszczenia
 
-- **Kamera jest zasymulowana.** Nie ma obrazu ani algorytmu wizyjnego. Wirtualna kamera zna pozycje celów i zwraca je z szumem, chybieniami i fałszywymi alarmami. Patrzy idealnie w dół bez przechyłów drona. 
+- **Kamera jest zasymulowana** Nie ma obrazu ani algorytmu wizyjnego. Wirtualna kamera zna pozycje celów i zwraca je z szumem, chybieniami i fałszywymi alarmami. Patrzy idealnie w dół bez przechyłów drona. 
 
-- **Cel jest punktem.** Nie ma rozmiaru, koloru, oświetlenia ani zasłonięć. 
+- **Cel jest punktem** Nie ma rozmiaru i koloru. 
 
-- **Zrzut to ustawienie serwa.** Nie ma fizyki spadającego ładunku (wiatr, czas opadania). Zrzut następuje z pozycji nad celem. 
+- **Zrzut to ustawienie serwa** Nie ma fizyki spadającego ładunku (wiatr, czas opadania). Zrzut następuje z pozycji nad celem. 
 
 - **Alarmy są sprawdzane między krokami**, czyli przed każdym punktem trasy, a nie w trakcie lotu do jednego punktu. Alarm w środku odcinka wywoła reakcję dopiero po dolocie. 
 
-- **Awarie w symulatorze są sztuczne.** To zmiany parametrów `SIM_...`, a nie prawdziwe rozładowania baterii czy zakłócenia GPS. 
+- **Awarie w symulatorze są sztuczne** To zmiany parametrów `SIM_...`, a nie prawdziwe rozładowania baterii czy zakłócenia GPS. 
 
 - **Utraty łączności nie da się wywołać w Mission Plannerze** - ten scenariusz działa tylko na atrapie. 
 
-- **Potwierdzanie celu (2 / 3 spojrzeń) zmniejsza liczbę fałszywych alarmów, ale ich nie eliminuje.** Przy bardzo częstych fałszywych alarmach dwa spojrzenia mogą przypadkiem się zgodzić. 
+- **Potwierdzanie celu (2 / 3 spojrzeń) zmniejsza liczbę fałszywych alarmów, ale ich nie eliminuje.** Przy częstych fałszywych alarmach dwa spojrzenia mogą przypadkiem się zgodzić. 
 
 - **Brak wiatru, przeszkód i innych statków powietrznych**, stała wysokość lotu 20 m, jeden dron, jeden cel naraz. 
 
 - **Czas w scenariuszu limitu czasu zależy od tempa symulatora** (opisane w sekcji 6). 
 
-- **Testy ze SITL nie są częścią `pytest`.** Loty w symulatorze uruchamia się ręcznie, bo wymagają Mission Planner. Automatycznie testowana jest cała logika na atrapie. 
+- **Testy ze SITL nie są częścią `pytest`** Loty w symulatorze uruchamia się ręcznie, bo wymagają Mission Planner. Automatycznie testowana jest cała logika na atrapie. 
 
  
 
@@ -525,8 +524,6 @@ Na atrapie testujemy to, czego SITL nie potrafi lub nie jest powtarzalnie - utra
 - Wersja dla samolotu (ArduPlane): inna trasa, lądowanie z podejściem, zrzut z przelotu. 
 
 - Wizualizacja raportów i porównywanie przebiegów (np. mapa trasy z punktem zrzutu). 
-
-- Testy odporności: losowe zakłócenia telemetrii i opóźnienia komend. 
 
  
 
@@ -545,6 +542,6 @@ Na atrapie testujemy to, czego SITL nie potrafi lub nie jest powtarzalnie - utra
 
  [Dokumentacja MAVLink](https://mavlink.io/en/) i [ArduPilot](https://ardupilot.org/dev/)  typy komend i parametry symulatora   
 
-Korzystałam z AI (Cursor) do pisania części kodu i testów  oraz instrukcji i części README. Samodzielnie wybrałam misję i jej założenia, zainstalowałam i skonfigurowałam narzędzia, uruchamiałam i testowałam wszystko na komputerze w Mission Plannerze, nagrałam materiały. Rozumiem działanie modułów i potrafię je wyjaśnić. Wspomagałam się AI kiedy natrafiałam na problem którego nie byłam w stanie rozwiązać samodzielnie.
+Korzystałam z AI (Claude Sonnet/Opus) do pisania części kodu i testów oraz instrukcji i części README. Wspomagałam się AI kiedy natrafiałam na problem którego nie byłam w stanie rozwiązać samodzielnie.
 
  

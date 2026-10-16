@@ -7,7 +7,7 @@ from mission.sensors.simulated_camera import Cel, WirtualnaKamera, wczytaj_cele
 
 DOM = Punkt(-35.363261, 149.165230)
 CEL = Cel("test", przesun(DOM, 30, 45))
-# Kamera 60 stopni na 20 m widzi kwadrat o połowie boku 20 * tan(30 stopni), czyli ok. 11,5 m.
+# Kamera 60 stopni na 20 m widzi kwadrat o połowie boku 20 * tan(30 stp) -  ok. 11,5 m.
 
 
 def kamera(**kwargs):
