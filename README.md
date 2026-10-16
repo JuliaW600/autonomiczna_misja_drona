@@ -4,15 +4,14 @@
 Autor: Julia Wierzbicka 
 
 
-!**Trasa w Mission Plannerze** (docs/trasa-kosiarka-mission-planner.png) 
+![Trasa w Mission Plannerze](docs/trasa-kosiarka-mission-planner.png).
 
-**Awarie w Mission Plannerze** (https://drive.google.com/file/d/1cnelmbGfTy-NOu4XVmemNjnMwPisvn23/view?usp=sharing) 
-
+[Awarie w Mission Plannerze (film)](https://drive.google.com/file/d/1cnelmbGfTy-NOu4XVmemNjnMwPisvn23/view?usp=sharing).
 
 
 [Misja ze zrzutem ładunku w Mission Plannerze](docs/misja-zrzut-mission-planner.png) 
 
-https://drive.google.com/file/d/1bxbqcKp4sBbboGS7KH68qY9peaoHYRbK/view?usp=sharing 
+[Pełna misja w symulatorze] https://drive.google.com/file/d/1bxbqcKp4sBbboGS7KH68qY9peaoHYRbK/view?usp=sharing 
 
  
 
@@ -38,7 +37,7 @@ https://drive.google.com/file/d/1bxbqcKp4sBbboGS7KH68qY9peaoHYRbK/view?usp=shari
 
 10. [Pomysły na dalszy rozwój](#10-pomysły-na-dalszy-rozwój) 
 
-11. [Wykorzystane źródła i narzędzia](#11-wykorzystane-źródła-i_narzędzia) 
+11. [Wykorzystane źródła i narzędzia](#11-wykorzystane-źródła-i-narzędzia) 
 
  
 
@@ -107,68 +106,36 @@ W symulatorze zrzut ląduje ok. 0,5 do 2 m od prawdziwego celu (zależy od szumu
 
 ## 3. Architektura
 
-```mermaid 
+Program składa się z kilku niewielkich modułów. Całą misję prowadzi Misja, czyli maszyna stanów z pliku state_machine.py. Aby sterować dronem, odczytywać czujnik i mierzyć czas, korzysta z trzech interfejsów: Pojazd, Czujnik i Zegar. Interfejs określa tylko to co dany element ma potrafić, bez wskazywania, jak to robi. Dzięki temu ten sam kod misji może pracować z symulatorem w Mission Plannerze i z atrapą drona w testach.
 
-flowchart TB 
+### Schemat zależności
 
-    subgraph skrypty["scripts/ (cienka warstwa)"] 
+```text
+scripts/misja.py ------------> Misja
+scripts/scenariusz.py -------> mission/scenariusz.py --> Misja
+                               (wczytuje YAML, wstrzykuje awarie, sprawdza wynik)
 
-        misja["misja.py"] 
+Misja (state_machine.py) korzysta z:
+  - safety.py ........ monitor bezpieczeństwa (sprawdza alarmy przed każdym punktem)
+  - raport.py ........ zapis raportu JSON
+  - Pojazd ........... interfejs
+        - MavlinkPojazd (pymavlink) --> ArduCopter SITL / Mission Planner
+        - AtrapaDrona (testy)
+  - Czujnik .......... interfejs
+        - WirtualnaKamera --> cele z data/cele.yaml
+  - Zegar ............ interfejs
+        - ZegarSystemowy
+        - ZegarSztuczny (testy)
 
-        scen["scenariusz.py"] 
+Scenariusze awarii: config/scenarios/*.yaml (czyta je mission/scenariusz.py)
+```
 
-    end 
+Legenda:
+strzałka `-->` znaczy „korzysta z” albo „rozmawia z”, a punktory pod interfejsem to jego konkretne wersje. Prawdziwy dron z symulatora (`MavlinkPojazd`) i atrapa (`AtrapaDrona`) spełniają tę samą umowę `Pojazd`, więc misja nie wie, z którym z nich pracuje.
 
+
+Kluczowe decyzje projektowe:
  
-
-    misja --> SM 
-
-    scen --> SC["mission/scenariusz.py: wczytuje YAML,\nwstrzykuje awarie, sprawdza wynik"] 
-
-    SC --> SM 
-
- 
-
-    SM["state_machine.py: Misja\n(maszyna stanów)"] 
-
-    SM --> SAF["safety.py: sprawdz()\nmonitor bezpieczeństwa"] 
-
-    SM --> RAP["raport.py: raport JSON"] 
-
- 
-
-    SM --> POJ(["Pojazd (interfejs)"]) 
-
-    SM --> CZU(["Czujnik (interfejs)"]) 
-
-    SM --> ZEG(["Zegar (interfejs)"]) 
-
- 
-
-    POJ -.-> MAV["MavlinkPojazd (pymavlink)"] 
-
-    POJ -.-> ATR["AtrapaDrona (testy)"] 
-
-    CZU -.-> KAM["WirtualnaKamera"] 
-
-    ZEG -.-> ZS["ZegarSystemowy"] 
-
-    ZEG -.-> ZSZ["ZegarSztuczny (testy)"] 
-
- 
-
-    MAV ==> SITL[("ArduCopter SITL\nMission Planner")] 
-
-    KAM --- CELE[/"data/cele.yaml"/] 
-
-    SC --- YAML[/"config/scenarios/*.yaml"/] 
-
-``` 
-
- 
-
-Linia ciągła znaczy "używa", linia przerywana "jest implementacją interfejsu". Kluczowe decyzje projektowe: 
-
 - **Interfejsy i atrapy** - logika misji nie wie, czy rozmawia z symulatorem, czy z atrapą. Dzięki temu ten sam kod przechodzi testy bez symulatora, a w Mission Plannerze 
 
   leci naprawdę. Tylko `vehicle.py` zna MAVLink. 
@@ -221,7 +188,7 @@ telemetria z `GLOBAL_POSITION_INT`, `SYS_STATUS`, `GPS_RAW_INT` i `HEARTBEAT`. K
 
 ## 4. Struktura repozytorium i dane testowe 
 
-autonomiczna_misja_drona/ 
+'''autonomiczna_misja_drona/ 
 
 ├─ config/scenarios/        8 scenariuszy testowych w YAML (dane testowe: cele, awarie, oczekiwane wyniki) 
 
@@ -319,7 +286,6 @@ python scripts/misja.py --atrapa
 
 ``` 
 
- 
 
 Oczekiwany koniec wyniku: `Wynik misji: SUKCES (cel znaleziony i ładunek zrzucony)`, linia `Zrzut ... m od prawdziwego celu` i `Raport zapisany: output/raport.json`. 
 
